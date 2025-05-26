@@ -4591,22 +4591,20 @@ Error Box_cmex::parse(BitstreamRange& range, const heif_security_limits* limits)
       uint32_t div = 1U << (14 + (use32bit ? 16 : 0));
 
       m_matrix.rotation_as_quaternions = true;
-      m_matrix.quaternion_x = quat_x / (double)div;
-      m_matrix.quaternion_y = quat_y / (double)div;
-      m_matrix.quaternion_z = quat_z / (double)div;
-
-      double q_sum = (m_matrix.quaternion_x * m_matrix.quaternion_x +
-                      m_matrix.quaternion_y * m_matrix.quaternion_y +
-                      m_matrix.quaternion_z * m_matrix.quaternion_z);
-
-      if (q_sum > 1.0) {
+      double v0 = (double)quat_x / div;
+      double v1 = (double)quat_y / div;
+      double v2 = (double)quat_z / div;
+      double q_sum_v012 = (v0 * v0 + v1 * v1 + v2 * v2);
+      if (q_sum_v012 > 1.0001) {
         return Error(heif_error_Invalid_input,
                      heif_suberror_Unspecified,
                      "Invalid quaternion in extrinsic rotation matrix");
       }
-
-      m_matrix.quaternion_w = sqrt(1 - q_sum);
-
+      double v3 = sqrt(std::max(0.0, 1.0 - q_sum_v012));
+      m_matrix.quaternion_x = -v1;
+      m_matrix.quaternion_y =  v3;
+      m_matrix.quaternion_z =  v2;
+      m_matrix.quaternion_w =  v0;
     } else if (get_version() == 1) {
       uint32_t div = 1<<16;
       m_matrix.rotation_yaw = range.read32s() / (double)div;
